@@ -161,6 +161,25 @@ app.patch('/authors/:authorId/books', async (req, res) => {
     // GET /reviews?firstName=Daisy&lastName=Herzog
     // GET /reviews?firstName=Daisy
     // GET /reviews?lastName=Herzog
+// app.get('/reviews', async (req, res) => {
+//     const { firstName, lastName } = req.query;
+
+//     // Check values in query parameters to define where conditions of the query
+//     const whereClause = {};
+//     if (firstName) whereClause.firstName = firstName;
+//     if (lastName) whereClause.lastName = lastName;
+
+//     const reviews = await Review.findAll({
+//         include: {
+//             model: Reviewer, 
+//             where: whereClause,
+//             attributes: ['firstName', 'lastName']
+//         },
+//     });
+
+//     res.json(reviews);
+// });
+
 app.get('/reviews', async (req, res) => {
     const { firstName, lastName } = req.query;
 
@@ -168,6 +187,18 @@ app.get('/reviews', async (req, res) => {
     const whereClause = {};
     if (firstName) whereClause.firstName = firstName;
     if (lastName) whereClause.lastName = lastName;
+
+    if(firstName && lastName){
+        const reviewer = await Reviewer.findOne({
+            where: whereClause,
+            include: {
+                model: Review
+            }
+        })
+
+        res.json(reviewer.Reviews)
+        return
+    }
 
     const reviews = await Review.findAll({
         include: {
