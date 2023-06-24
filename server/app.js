@@ -34,27 +34,32 @@ app.get('/test-benchmark-logging', async (req, res) => {   // > 100 ms execution
 
 
 // STEP #1: Benchmark a Frequently-Used Query
-app.get('/books', async (req, res) => {
+// app.get('/books', async (req, res) => {
 
-    let books = await Book.findAll({
-        include: Author,
-    });
+//     let books = await Book.findAll({
+//         include: Author,
+//     });
 
-    // Filter by price if there is a maxPrice defined in the query params
-    if (req.query.maxPrice) {
-        books = books.filter(book => book.price < parseInt(req.query.maxPrice));
-    };
-    res.json(books);
-});
+//     // Filter by price if there is a maxPrice defined in the query params
+//     if (req.query.maxPrice) {
+//         books = books.filter(book => book.price < parseInt(req.query.maxPrice));
+//     };
+//     res.json(books);
+// });
+
+
 
     // 1a. Analyze:
 
         // Record Executed Query and Baseline Benchmark Below:
+        // 75ms, 73ms, 87ms, 56ms, 64ms
 
         // - What is happening in the code of the query itself?
+        // It is using Javascript to filter the Books by price less than maxPrice
 
 
-        // - What exactly is happening as SQL executes this query? 
+        // - What exactly is happening as SQL executes this query?
+        // Selecting all the records of Books and including Author
  
 
 
@@ -62,46 +67,84 @@ app.get('/books', async (req, res) => {
 // 1b. Identify Opportunities to Make Query More Efficient
 
     // - What could make this query more efficient?
-
+    // Make a where with Op.lte to filter the records by price
 
 // 1c. Refactor the Query in GET /books
+app.get('/books', async (req, res) => {
 
+    const maxPrice = req.query.maxPrice
+
+    const query = {
+        include: Author,
+    }
+
+    if(maxPrice !== undefined){
+        query.where = {
+            price: {
+                [Op.lte]: maxPrice
+            }
+        }
+    }
+
+    let books = await Book.findAll(query);
+
+    res.json(books);
+});
 
 
 // 1d. Benchmark the Query after Refactoring
 
     // Record Executed Query and Baseline Benchmark Below:
+    // 23ms, 25ms, 26ms, 24ms, 23ms
 
     // Is the refactored query more efficient than the original? Why or Why Not?
-
-
-
-
+    // Yes, because of the use of Where in the SQL query not on javascript
 
 // STEP #2: Benchmark and Refactor Another Query
+// app.patch('/authors/:authorId/books', async (req, res) => {
+    
+//     const author = await Author.findByPk(req.params.authorId, {
+//         include: { model: Book }
+//     });
+
+//     if (!author) {
+//         res.status(404);
+//         return res.json({
+//             message: 'Unable to find an author with the specified authorId'
+//         });
+//     }
+
+//     for (let book of author.Books) {
+//         book.price = req.body.price;
+//         await book.save();
+//     }
+
+//     const books = await Book.findAll({
+//         where: {
+//             authorId: author.id
+//         }
+//     });
+
+//     res.json({
+//         message: `Successfully updated all authors.`,
+//         books
+//     });
+// });
+
 app.patch('/authors/:authorId/books', async (req, res) => {
-    const author = await Author.findOne({
-        include: { model: Book },
+    
+    await Book.update({
+        price: req.body.price
+    },
+    {
         where: {
-            id: req.params.authorId
+            authorId: req.params.authorId
         }
-    });
-
-    if (!author) {
-        res.status(404);
-        return res.json({
-            message: 'Unable to find an author with the specified authorId'
-        });
-    }
-
-    for (let book of author.Books) {
-        book.price = req.body.price;
-        await book.save();
-    }
+    })
 
     const books = await Book.findAll({
         where: {
-            authorId: author.id
+            authorId: req.params.authorId
         }
     });
 
@@ -110,7 +153,6 @@ app.patch('/authors/:authorId/books', async (req, res) => {
         books
     });
 });
-
 
 
 
